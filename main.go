@@ -211,13 +211,12 @@ func connect(c net.Conn) {
 	log.Printf("established %s connection to %s\n", dst.RemoteAddr().Network(), dst.RemoteAddr().String())
 
 	// write ack to client (success)
-	/*
-		+----+-----+-------+------+----------+----------+
-		|VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
-		+----+-----+-------+------+----------+----------+
-		| 1  |  1  | X'00' |  1   | Variable |    2     |
-		+----+-----+-------+------+----------+----------+
-	*/
+	//
+	// +----+-----+-------+------+----------+----------+
+	// |VER | REP |  RSV  | ATYP | BND.ADDR | BND.PORT |
+	// +----+-----+-------+------+----------+----------+
+	// | 1  |  1  | X'00' |  1   | Variable |    2     |
+	// +----+-----+-------+------+----------+----------+
 	log.Println("sending ack to SOCKS5 client")
 	c.Write(ack)
 
