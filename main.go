@@ -1,13 +1,18 @@
+// Socks5 proxy implementation. See RFC 1928 and 1929.
+//
+// https://www.ietf.org/rfc/rfc1928.txt
+// https://www.ietf.org/rfc/rfc1929.txt
+
 package main
 
 import (
 	"encoding/binary"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net"
-	"os"
 	"strconv"
 	"time"
 )
@@ -239,7 +244,8 @@ func endConnection(c net.Conn, ack []byte) {
 func handshake(c net.Conn) {
 	log.Printf("new connection from %s\n", c.RemoteAddr().String())
 
-	// Socks5 proxy implementation. See RFC 1928 and 1929.
+	// Initial handshake handshake with version
+	// identifier and method selection values
 	//
 	// +----+----------+----------+
 	// |VER | NMETHODS | METHODS  |
@@ -288,15 +294,18 @@ func handshake(c net.Conn) {
 }
 
 func main() {
-	a := os.Args
+	var port int
 
-	if len(a) == 1 {
+	flag.IntVar(&port, "port", 0, "port number")
+	flag.IntVar(&port, "p", 0, "port number (shorthand)")
+	flag.Parse()
+
+	if port == 0 {
 		log.Println("port number is required")
 		return
 	}
 
-	PORT := ":" + a[1]
-	l, err := net.Listen("tcp", PORT)
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		log.Println(err)
 		return
@@ -326,11 +335,12 @@ func parseAddress(addr string) (string, net.IP) {
 }
 
 func transfer(dst io.WriteCloser, src io.ReadCloser) {
-	defer dst.Close()
 	defer src.Close()
+	defer dst.Close()
 
 	w, err := io.Copy(dst, src)
 	if err != nil {
+		log.Printf("transfer err! EOF: %t\n", err == io.EOF)
 		log.Println(err)
 		return
 	}
