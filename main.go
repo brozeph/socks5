@@ -226,8 +226,8 @@ func connect(c net.Conn) {
 	c.Write(ack)
 
 	// pipe data back and forth...
-	go transfer(dst, c)
-	go transfer(c, dst)
+	go transfer(true, dst, c)
+	go transfer(false, c, dst)
 }
 
 func endConnection(c net.Conn, ack []byte) {
@@ -334,16 +334,25 @@ func parseAddress(addr string) (string, net.IP) {
 	return network, ip
 }
 
-func transfer(dst io.WriteCloser, src io.ReadCloser) {
+func transfer(readFromOrigin bool, dst io.WriteCloser, src io.ReadCloser) {
 	defer src.Close()
 	defer dst.Close()
 
+	dstAlias := "endpoint"
+	srcAlias := "SOCKS5 client"
+
+	if !readFromOrigin {
+		dstAlias = srcAlias
+		srcAlias = "endpoint"
+	}
+
 	w, err := io.Copy(dst, src)
 	if err != nil {
-		log.Printf("transfer err! EOF: %t\n", err == io.EOF)
+		log.Printf("transfer err reading from %s (bytes: %d)\n", srcAlias, w)
+
 		log.Println(err)
 		return
 	}
 
-	log.Printf("%d bytes written from destination to source\n", w)
+	log.Printf("%d bytes written from %s to %s\n", w, dstAlias, srcAlias)
 }
