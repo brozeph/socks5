@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"regexp"
 	"strconv"
 	"time"
 )
@@ -151,18 +152,22 @@ func connect(c net.Conn) {
 		dwordC := binary.BigEndian.Uint32(dwords[2])
 		dwordD := binary.BigEndian.Uint32(dwords[3])
 
+		// regular expression looking for 0000 in values converted from uint64 to strings
+		re := regexp.MustCompile(`0{4}`)
+
 		// convert each DWORD (uint32) into 2 WORD (uint16) values
 		// and string format each value as base 16 with a colon delimeter
+		// also while removing occurrences of "0000" - seems to affect Linux OS, but not BSD
 		addr = fmt.Sprintf(
 			"%s:%s:%s:%s:%s:%s:%s:%s",
-			strconv.FormatUint(uint64(dwordA&0xffff0000), 16),
-			strconv.FormatUint(uint64(dwordA&0xffff), 16),
-			strconv.FormatUint(uint64(dwordB&0xffff0000>>16), 16),
-			strconv.FormatUint(uint64(dwordB&0xffff), 16),
-			strconv.FormatUint(uint64(dwordC&0xffff0000>>16), 16),
-			strconv.FormatUint(uint64(dwordC&0xffff), 16),
-			strconv.FormatUint(uint64(dwordD&0xffff0000>>16), 16),
-			strconv.FormatUint(uint64(dwordD&0xffff), 16))
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordA&0xffff0000), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordA&0xffff), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordB&0xffff0000>>16), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordB&0xffff), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordC&0xffff0000>>16), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordC&0xffff), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordD&0xffff0000>>16), 16), ""),
+			re.ReplaceAllString(strconv.FormatUint(uint64(dwordD&0xffff), 16), ""))
 
 	default:
 		// TODO: handle or send out error
@@ -196,12 +201,16 @@ func connect(c net.Conn) {
 		return
 	}
 
+	// determine network type and parse destination address when IPv4 or IPv6
 	network, ip := parseAddress(addr)
+	if ip != nil {
+		addr = ip.String()
+	}
 
-	log.Printf("establishing %s connection to destination: %s:%d\n", network, ip, port)
+	log.Printf("establishing %s connection to destination: %s:%d\n", network, addr, port)
 
 	// TODO: parameterize timeout
-	dst, err := net.DialTimeout(network, fmt.Sprintf("%s:%d", ip.String(), port), 10*time.Second)
+	dst, err := net.DialTimeout(network, net.JoinHostPort(addr, strconv.Itoa(int(port))), 10*time.Second)
 	if err != nil {
 		log.Println(err)
 		// TODO: update ack to indicate real error...
