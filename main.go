@@ -76,6 +76,7 @@ func connect(c net.Conn) {
 	}
 
 	log.Printf("VER %d, CMD %d, ATYP %d\n", ver, cmd, atyp)
+	// log.Printf("ATYP domain name: %d, IPv4: %d, IPv6: %d", rfc1928AtypDomanName, rfc1928AtypIPv4, rfc1928AtypIPv6)
 
 	// prepare acknowledgement while processing request
 	ack := make([]byte, 4)
@@ -202,7 +203,7 @@ func connect(c net.Conn) {
 	}
 
 	// determine network type and parse destination address when IPv4 or IPv6
-	network, ip := parseAddress(addr)
+	network, ip := parseAddress(atyp, addr)
 	if ip != nil {
 		addr = ip.String()
 	}
@@ -331,12 +332,13 @@ func main() {
 	}
 }
 
-func parseAddress(addr string) (string, net.IP) {
+func parseAddress(atyp byte, addr string) (string, net.IP) {
 	log.Printf("parsing destination address %s\n", addr)
 
 	network := "tcp"
 	ip := net.ParseIP(addr)
-	if ip.To4() == nil {
+
+	if atyp != rfc1928AtypDomanName && ip.To4() == nil {
 		network = "tcp6"
 	}
 
